@@ -1,0 +1,46 @@
+- hosts: localhost
+  vars_files:
+    - vars.yml
+  vars_prompt:
+  - name: web_port
+    prompt: "On which port you want to run webserver"
+    private: no 
+  - name: name
+    prompt: "Enter you Container name "
+    private: no
+
+  tasks:
+  - name: " Task is Running "
+    block:
+    - name: "installing docker"
+      command: dnf install docker-ce --nobest -y
+      changed_when: False
+    - name: starting the service 
+      service:
+         name: docker
+         state: started
+    - name: "starting container"      
+      docker_container:
+         name: "container"
+         image: prabal03/sshos:v1
+         state: started
+         ports: "{{ web_port }}:80"
+      register: x
+    - firewalld:
+        port: "{{ web_port }}/tcp"
+        permanent: true
+        state: enabled
+    - blockinfile:
+         create: yes
+         path: ./inventory/docker
+         block: |
+              [docker]
+              {{ x.container.NetworkSettings.IPAddress }} ansible_ssh_user=root ansible_ssh_pass="{{ password }}" ansible_connection=ssh  
+    rescue:
+    - debug:
+        msg: "something miss contact to developer"
+
+    always:
+    - debug: 
+        msg: "THANK YOU" 
+
